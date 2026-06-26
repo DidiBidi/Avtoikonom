@@ -1,0 +1,73 @@
+name: E2E Tests
+
+# CI/CD readiness:
+# - Runs the full Cypress suite headless on every push/PR.
+# - Credentials are injected from GitHub Secrets (never committed).
+# - Artifacts (videos, screenshots, HTML report) are uploaded for debuggability.
+# - Manual runs supported via workflow_dispatch.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Sharding-ready: add more containers here to parallelize as the suite grows.
+        browser: [chrome]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          browser: ${{ matrix.browser }}
+        env:
+          # Map repository secrets to Cypress env (CYPRESS_* convention).
+          CYPRESS_userEmail: ${{ secrets.CYPRESS_USER_EMAIL }}
+          CYPRESS_userPassword: ${{ secrets.CYPRESS_USER_PASSWORD }}
+          CYPRESS_BASE_URL: ${{ vars.CYPRESS_BASE_URL || 'https://dev.admin.avtoikonom.com' }}
+
+      - name: Generate HTML report
+        if: always()
+        run: npm run report || true
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-report-${{ matrix.browser }}
+          path: cypress/reports/html
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-${{ matrix.browser }}
+          path: cypress/screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos-${{ matrix.browser }}
+          path: cypress/videos
+          if-no-files-found: ignore
+          retention-days: 7
