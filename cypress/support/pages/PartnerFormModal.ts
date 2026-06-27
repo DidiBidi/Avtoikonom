@@ -60,6 +60,33 @@ export class PartnerFormModal {
     return this;
   }
 
+  /**
+   * Services is a multi-select. Select the first `count` available options.
+   * Re-querying before each click (no captured nodes) avoids detached-node
+   * flakes when Ant Design re-renders its virtual list.
+   */
+  selectServices(count: number): this {
+    cy.get(selectors.partners.form.servicesSelect).click({ force: true });
+    for (let i = 0; i < count; i += 1) {
+      this.openDropdown().find(selectors.antd.option).eq(i).click({ force: true });
+    }
+    // Close the dropdown so it doesn't overlay the next field.
+    this.root.find(selectors.partners.form.nameInput).click();
+    return this;
+  }
+
+  /** Assert exactly `count` services are selected as tags in the form. */
+  assertServiceCount(count: number): this {
+    // Multi-select tags render as overflow items; the trailing suffix item is
+    // the (empty) search input, so it is excluded from the count.
+    this.root
+      .find(selectors.partners.form.servicesSelect)
+      .closest('.ant-select')
+      .find('.ant-select-selection-overflow-item:not(.ant-select-selection-overflow-item-suffix)')
+      .should('have.length', count);
+    return this;
+  }
+
   selectSubscriptionPlan(planLabel?: string): this {
     if (planLabel) {
       this.selectAntOption(selectors.partners.form.subscriptionSelect, planLabel);
@@ -67,6 +94,35 @@ export class PartnerFormModal {
       this.selectFirstAntOption(selectors.partners.form.subscriptionSelect);
     }
     return this;
+  }
+
+  /**
+   * Change the subscription plan to a different option than the current one and
+   * yield the newly selected label (for persistence assertions).
+   *
+   * The dropdown does NOT mark the active option with `-selected`, so we compare
+   * each option's text against the current value to find a genuinely different
+   * one (picking by index could re-select the current plan and change nothing).
+   */
+  changeSubscriptionPlan(): Cypress.Chainable<string> {
+    const result = { plan: '' };
+    this.root
+      .find(selectors.partners.form.subscriptionSelect)
+      .closest('.ant-select')
+      .find(selectors.antd.selectionItem)
+      .invoke('text')
+      .then((currentText) => {
+        const current = currentText.trim();
+        cy.get(selectors.partners.form.subscriptionSelect).click({ force: true });
+        this.openDropdown()
+          .find(selectors.antd.option)
+          .then(($opts) => {
+            const target = [...$opts].find((el) => el.textContent!.trim() !== current);
+            result.plan = target!.textContent!.trim();
+            cy.wrap(target).click({ force: true });
+          });
+      });
+    return cy.then(() => result.plan);
   }
 
   /**
@@ -119,6 +175,18 @@ export class PartnerFormModal {
     return this;
   }
 
+  /**
+   * Yield the current logo preview image's `src`. The saved logo renders as an
+   * `<img alt="placeholder">` whose src points at the uploaded file on S3, so
+   * comparing it before/after a re-upload proves the new image really persisted.
+   */
+  getLogoSrc(): Cypress.Chainable<string> {
+    return this.root
+      .find(selectors.partners.form.logoPreview)
+      .should('have.attr', 'src')
+      .then((src) => `${src}`);
+  }
+
   /** Fill every required field from a data object. */
   fill(data: PartnerData): this {
     this.fillName(data.name);
@@ -152,6 +220,21 @@ export class PartnerFormModal {
     cy.wait(`@${alias}`).its('response.statusCode').should('be.within', 200, 299);
     // And the modal must close once the save is accepted.
     cy.get(selectors.partners.form.modal, { timeout: 15000 }).should('not.exist');
+  }
+
+  /** Click Save without expecting a network request (for negative/validation tests). */
+  clickSave(): this {
+    cy.get(selectors.partners.form.saveButton).click();
+    return this;
+  }
+
+  /** Assert an inline field-validation message is shown on the form. */
+  assertValidationError(message: string): this {
+    // The message TEXT is the stable contract (the wrapper uses hashed
+    // CSS-module classes and animates in), so we assert the text exists within
+    // the modal rather than coupling to an unstable class or animation state.
+    this.root.contains(message).should('exist');
+    return this;
   }
 
   cancel(): void {

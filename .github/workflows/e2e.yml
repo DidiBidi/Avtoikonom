@@ -19,8 +19,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Cross-browser: Chrome is the primary target; Firefox proves the suite
+        # is not coupled to a single engine. Both are preinstalled on
+        # ubuntu-latest runners, so no extra setup step is needed.
         # Sharding-ready: add more containers here to parallelize as the suite grows.
-        browser: [chrome]
+        browser: [chrome, firefox]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

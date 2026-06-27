@@ -55,11 +55,19 @@ export const selectors = {
       contactPersonInput: '#contact-person-field',
       descriptionInput: '#description-field',
       logoInput: 'input[type="file"][name="file-upload"]',
+      // The saved logo renders as a preview <img> whose src points at the
+      // partner's uploaded image on S3 (…/media/partners/…). Matching on the
+      // src path (scoped to the form modal by the caller) reliably finds the
+      // logo and lets a test verify a re-uploaded logo persisted (src changes).
+      logoPreview: 'img[src*="/media/partners/"]',
       hideCheckbox: '#checkbox-hide',
       // Scope to the modal that actually contains the form, so the photo
       // cropper's own Save/Cancel buttons are never matched by mistake.
       saveButton: '.ant-modal-content:has(#name-field) button:contains("Save")',
       cancelButton: '.ant-modal-content:has(#name-field) button:contains("Cancel")',
+      // Inline field-validation messages render with hashed CSS-module classes
+      // (unstable), so we assert on the message TEXT itself, which is the real
+      // contract — see PartnerFormModal.assertValidationError().
     },
     // Uploading a logo opens a separate "Edit photo" cropper modal that must be
     // confirmed before the image is applied to the form.
