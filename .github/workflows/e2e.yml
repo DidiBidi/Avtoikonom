@@ -34,6 +34,15 @@ jobs:
           node-version: 20
           cache: npm
 
+      # The runner's bleeding-edge Firefox no longer ships the CDP protocol that
+      # Cypress 13 uses to drive Firefox ("Failed to spawn CDP with Firefox").
+      # Pin an ESR build from the Cypress 13.17 era, which still supports CDP.
+      - name: Set up CDP-compatible Firefox
+        if: matrix.browser == 'firefox'
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: 128.0esr
+
       - name: Cypress run
         uses: cypress-io/github-action@v6
         with:
