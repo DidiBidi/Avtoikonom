@@ -62,12 +62,13 @@ Secrets are **never** committed. Provide them in one of two ways:
 cp cypress.env.example.json cypress.env.json
 ```
 
-`cypress.env.json` already contains the provided dev test account:
+Fill `cypress.env.json` with the dev test account credentials (provided
+separately, never committed):
 
 ```json
 {
-  "userEmail": "test_qa_ex@example.com",
-  "userPassword": "test_qa_ex@example.com"
+  "userEmail": "<your-dev-test-email>",
+  "userPassword": "<your-dev-test-password>"
 }
 ```
 
